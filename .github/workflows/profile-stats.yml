@@ -1,0 +1,59 @@
+name: Actualizar tarjetas del perfil
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - .github/workflows/profile-stats.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "17 11 * * *"
+
+concurrency:
+  group: profile-stats
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+
+      - name: Generar estadísticas públicas
+        uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
+        with:
+          card: stats
+          options: username=${{ github.repository_owner }}&show_icons=true&hide_rank=true&locale=es&bg_color=0d1424&title_color=60a5fa&icon_color=38bdf8&text_color=cbd5e1&border_color=263955
+          path: profile/stats.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: "true"
+
+      - name: Generar distribución de lenguajes
+        uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
+        with:
+          card: top-langs
+          options: username=${{ github.repository_owner }}&layout=compact&langs_count=8&locale=es&bg_color=0d1424&title_color=60a5fa&text_color=cbd5e1&border_color=263955
+          path: profile/top-langs.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_error: "true"
+
+      - name: Guardar las tarjetas
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add profile/stats.svg profile/top-langs.svg
+          if git diff --cached --quiet; then
+            echo "Las tarjetas no cambiaron."
+            exit 0
+          fi
+          git commit -m "Actualiza estadísticas públicas del perfil"
+          git push origin HEAD:main
